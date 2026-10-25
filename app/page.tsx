@@ -1,89 +1,111 @@
-export default function HomePage() {
-  return (
-    <div className="shell">
-      <header>
-        <a className="brand" href="#top">
-          Fieldnotes
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="#journal">Journal</a>
-          <a href="#events">Events</a>
-          <a href="#about">About</a>
-        </nav>
-      </header>
+import Link from "next/link";
+import { connection } from "next/server";
+import {
+  PublicEventCard,
+  PublicFooter,
+  PublicHeader,
+  PublicPostCard,
+} from "@/app/components/public-navigation";
+import { createPublicClient } from "@/lib/supabase/public-server";
+import { getPublicEventThumbnails, getPublicPostThumbnails } from "@/lib/public/card-thumbnails";
+import { tiptapDocumentToPlainText } from "@/lib/posts/content";
 
-      <main id="top">
-        <section className="intro" id="about">
-          <div className="eyebrow">A personal journal</div>
-          <h1>
-            Small moments,
-            <br />
-            kept close.
-          </h1>
-          <p>
-            A place for stories from the road, notes from ordinary days, and
-            the things I want to remember.
-          </p>
+export default async function HomePage() {
+  await connection();
+  const supabase = createPublicClient();
+  const [postsResult, eventsResult] = await Promise.all([
+    supabase
+      .from("posts")
+      .select("id, title, slug, excerpt, published_at")
+      .eq("status", "published")
+      .eq("visibility", "public")
+      .order("published_at", { ascending: false })
+      .limit(3),
+    supabase
+      .from("events")
+      .select("id, title, slug, description, summary, start_date, end_date")
+      .eq("visibility", "public")
+      .order("start_date", { ascending: false, nullsFirst: false })
+      .limit(3),
+  ]);
+  const [postThumbnails, eventThumbnails] = await Promise.all([
+    getPublicPostThumbnails(supabase, postsResult.data?.map((post) => post.id) ?? []),
+    getPublicEventThumbnails(supabase, eventsResult.data?.map((event) => event.id) ?? []),
+  ]);
+
+  return (
+    <div className="public-shell">
+      <PublicHeader activePage="home" />
+      <main className="shell public-home" id="top">
+        <section className="public-home-hero" id="about" aria-labelledby="home-title">
+          <div className="public-home-hero-heading">
+            <p className="eyebrow">A personal journal</p>
+            <h1 id="home-title">Small moments,<br />kept close.</h1>
+          </div>
+          <div className="public-home-hero-copy">
+            <p>Stories from the road, notes from ordinary days, and the things worth remembering.</p>
+            <Link className="public-primary-link" href="/events">Browse journal events <span aria-hidden="true">→</span></Link>
+          </div>
         </section>
 
-        <section id="journal" aria-labelledby="journal-title">
-          <div className="section-head">
-            <h2 id="journal-title">Recent entries</h2>
-            <a className="text-link" href="#journal">
-              View all entries&nbsp; ↗
-            </a>
+        <section className="public-home-section" id="journal" aria-labelledby="journal-title">
+          <div className="public-section-heading">
+            <div>
+              <p className="eyebrow">From the pages</p>
+              <h2 id="journal-title">Recent entries</h2>
+            </div>
+            <Link className="public-section-link" href="/events">Explore the journal <span aria-hidden="true">→</span></Link>
           </div>
-          <div className="posts">
-            <article className="post">
-              <div
-                className="post-art art-coast"
-                role="img"
-                aria-label="Soft green hills meeting a quiet coast"
-              />
-              <div className="post-meta">Travel · May 18, 2025</div>
-              <h3>
-                <a href="#journal">A slower kind of weekend</a>
-              </h3>
-              <p>
-                Two days by the water, long walks, and nowhere in particular to
-                be.
-              </p>
-            </article>
-            <article className="post" id="events">
-              <div
-                className="post-art art-window"
-                role="img"
-                aria-label="A sunlit window looking out onto a quiet landscape"
-              />
-              <div className="post-meta">At home · April 29, 2025</div>
-              <h3>
-                <a href="#journal">Light through the kitchen window</a>
-              </h3>
-              <p>A small note about morning coffee and the changing season.</p>
-            </article>
-            <article className="post">
-              <div
-                className="post-art art-market"
-                role="img"
-                aria-label="A row of colorful market stalls"
-              />
-              <div className="post-meta">City notes · March 12, 2025</div>
-              <h3>
-                <a href="#journal">Saturday at the market</a>
-              </h3>
-              <p>
-                Flowers, fresh bread, and the familiar pleasure of taking the
-                long way home.
-              </p>
-            </article>
+          {postsResult.error ? (
+            <p className="public-empty" role="status">Journal entries are unavailable right now. Please try again soon.</p>
+          ) : postsResult.data?.length ? (
+            <div className="public-post-grid">
+              {postsResult.data.map((post) => (
+                <PublicPostCard
+                  key={post.slug}
+                  title={post.title}
+                  slug={post.slug}
+                  excerpt={post.excerpt}
+                  publishedAt={post.published_at}
+                  thumbnail={postThumbnails.get(post.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="public-empty">The first public entries will appear here.</p>
+          )}
+        </section>
+
+        <section className="public-home-section public-home-events" aria-labelledby="featured-events-title">
+          <div className="public-section-heading">
+            <div>
+              <p className="eyebrow">Gathered moments</p>
+              <h2 id="featured-events-title">Events in the journal</h2>
+            </div>
+            <Link className="public-section-link" href="/events">All events <span aria-hidden="true">→</span></Link>
           </div>
+          {eventsResult.error ? (
+            <p className="public-empty" role="status">Events are unavailable right now. Please try again soon.</p>
+          ) : eventsResult.data?.length ? (
+            <div className="public-event-grid">
+              {eventsResult.data.map((event) => (
+                <PublicEventCard
+                  key={event.slug}
+                  title={event.title}
+                  slug={event.slug}
+                  description={tiptapDocumentToPlainText(event.summary) || event.description}
+                  startDate={event.start_date}
+                  endDate={event.end_date}
+                  thumbnail={eventThumbnails.get(event.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="public-empty">Public events will appear here when they are ready to share.</p>
+          )}
         </section>
       </main>
-
-      <footer>
-        <span>© 2025 Fieldnotes</span>
-        <span>Made for remembering.</span>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

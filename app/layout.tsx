@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fieldnotes — A personal journal",
+  title: "My Journal — A personal journal",
   description:
     "Stories from the road, notes from ordinary days, and the things worth remembering.",
 };
