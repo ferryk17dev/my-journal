@@ -6,7 +6,7 @@ import type { JSONContent } from "@tiptap/core";
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { isAllowedPostLink } from "@/lib/posts/links";
-import { signOwnerPostImage, uploadPostImage } from "@/app/admin/posts/image-actions";
+import { getOwnerPostImageUrl, uploadPostImage } from "@/app/admin/posts/image-actions";
 
 const ImagePreviewContext = createContext<{
   postId: string | null;
@@ -32,17 +32,12 @@ function JournalImageView({ node, updateAttributes, selected }: import("@tiptap/
       setFailed(true);
       return () => { current = false; };
     }
-    const refreshSignedUrl = () => {
-      void signOwnerPostImage(postId, path).then((url) => {
-        if (current) setSrc(url);
-        if (current && !url) setFailed(true);
-      });
-    };
-    refreshSignedUrl();
-    const refreshInterval = window.setInterval(refreshSignedUrl, 10 * 60 * 1000);
+    void getOwnerPostImageUrl(postId, path).then((url) => {
+      if (current) setSrc(url);
+      if (current && !url) setFailed(true);
+    });
     return () => {
       current = false;
-      window.clearInterval(refreshInterval);
     };
   }, [localUrl, path, postId]);
 

@@ -1,15 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
-import { collectPostImageReferences, isOwnerImagePath } from "@/lib/posts/images";
+import { createStorageAdminClient } from "@/lib/supabase/storage-admin";
+import { collectPostImageReferences, isOwnerImagePath, isPostImageStoragePath } from "@/lib/posts/images";
 import type { JSONContent } from "@tiptap/core";
 
 const BUCKET = "journal-private";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function notFound() {
   return new Response(null, {
     status: 404,
     headers: {
       "Cache-Control": "private, no-store",
+      "CDN-Cache-Control": "no-store",
+      "Vercel-CDN-Cache-Control": "no-store",
+      "Surrogate-Control": "no-store",
       "Referrer-Policy": "no-referrer",
       "X-Content-Type-Options": "nosniff",
     },
@@ -39,7 +46,7 @@ export async function GET(
     .select("id, post_id, storage_path")
     .eq("id", id)
     .maybeSingle();
-  if (imageError || !image) return notFound();
+  if (imageError || !image || !isPostImageStoragePath(image.storage_path)) return notFound();
 
   const postResult = isOwner
     ? await supabase.from("posts").select("id, user_id, status, visibility, event_id, content")
@@ -68,29 +75,45 @@ export async function GET(
   if (!ownerPreview && (post.status !== "published" || post.visibility !== "public" ||
       (post.event_id !== null && eventVisibility !== "public"))) return notFound();
 
-  if (ownerPreview && postOwnerId && !isOwnerImagePath(image.storage_path, postOwnerId)) return notFound();
-  const { data: signed, error: signedError } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(image.storage_path, 5 * 60);
-  if (signedError || !signed?.signedUrl) return notFound();
-
-  let storedImage: Response;
+  let imageFile: Blob;
   try {
-    storedImage = await fetch(signed.signedUrl, { cache: "no-store" });
+    const storageAdmin = createStorageAdminClient();
+    const { data: imagePost, error: imagePostError } = await storageAdmin
+      .from("posts")
+      .select("user_id")
+      .eq("id", post.id)
+      .maybeSingle();
+    if (
+      imagePostError ||
+      !imagePost ||
+      !isOwnerImagePath(image.storage_path, imagePost.user_id)
+    ) {
+      return notFound();
+    }
+
+    const { data, error } = await storageAdmin.storage
+      .from(BUCKET)
+      .download(image.storage_path);
+    if (error || !data) return notFound();
+    imageFile = data;
   } catch {
     return notFound();
   }
-  const contentType = storedImage.headers.get("content-type")?.split(";")[0].toLowerCase();
-  if (!storedImage.ok || !storedImage.body ||
-      !contentType || !["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
+  const contentType = imageFile.type.split(";")[0].toLowerCase();
+  if (!contentType || !["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
     return notFound();
   }
 
-  return new Response(storedImage.body, {
+  return new Response(await imageFile.arrayBuffer(), {
     status: 200,
     headers: {
       "Content-Type": contentType,
-      "Cache-Control": "private, no-store",
+      "Cache-Control": "private, no-store, max-age=0",
+      "CDN-Cache-Control": "no-store",
+      "Vercel-CDN-Cache-Control": "no-store",
+      "Surrogate-Control": "no-store",
+      "Pragma": "no-cache",
+      "Expires": "0",
       "Referrer-Policy": "no-referrer",
       "X-Content-Type-Options": "nosniff",
     },

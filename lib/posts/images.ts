@@ -33,3 +33,7 @@ export function collectPostImageReferences(document: JSONContent): PostImageRefe
 export function isOwnerImagePath(path: string, ownerId: string) {
   return new RegExp(`^${ownerId}/posts/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.(?:jpg|png|webp)$`).test(path);
 }
+
+export function isPostImageStoragePath(path: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/posts\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(?:jpg|png|webp)$/.test(path);
+}

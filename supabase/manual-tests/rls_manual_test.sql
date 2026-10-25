@@ -66,6 +66,45 @@ begin
     raise exception 'Authenticated role must be able to execute public.is_journal_owner().';
   end if;
 
+  if exists (
+    select 1
+    from pg_catalog.pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname in (
+        'my_journal_storage_select_readable_post_images',
+        'my_journal_storage_select_readable_event_items'
+      )
+  ) then
+    raise exception 'Public Storage image SELECT policies are still installed; apply the private image proxy migration.';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_catalog.pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'my_journal_storage_guard_select'
+      and permissive = 'RESTRICTIVE'
+      and cmd = 'SELECT'
+  ) then
+    raise exception 'The owner-only restrictive Storage SELECT guard is missing.';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_catalog.pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'my_journal_storage_select_owner'
+      and cmd = 'SELECT'
+      and qual like '%object.list%'
+      and qual like '%object.delete%'
+      and qual like '%object.upload_update%'
+  ) then
+    raise exception 'Storage owner SELECT must be limited to object listing, not downloads or signed URLs.';
+  end if;
+
   if pg_catalog.has_table_privilege('anon', 'private.journal_owner', 'SELECT')
      or pg_catalog.has_table_privilege('anon', 'private.journal_owner', 'INSERT')
      or pg_catalog.has_table_privilege('anon', 'private.journal_owner', 'UPDATE')
@@ -559,9 +598,9 @@ rollback;
 -- Storage object test (must use the Storage API, not SQL against storage.objects):
 -- 1. Upload a test file as the owner to
 --    <OWNER_AUTH_USER_UUID>/posts/<GENERATED_UUID>.jpg in journal-private.
--- 2. Confirm owner upload and download succeed. Anonymous and non-owner upload
---    and direct download attempts must fail, including a path prefixed by the
---    non-owner's own UUID.
--- 3. Public post images are served only by server code that confirms the image
---    row belongs to a currently readable post, then issues a short-lived URL.
---    Never expose the service-role key or sign a client-supplied path.
+-- 2. Confirm owner upload, listing, and deletion succeed. Direct download and
+--    signed-URL creation must fail for owner, anonymous, and non-owner clients.
+--    Non-owner uploads must fail, including a path under their own UUID folder.
+-- 3. Public image bytes are served only by application routes that recheck
+--    current visibility and never return a Storage URL. Never expose the
+--    service-role key or download a client-supplied path.

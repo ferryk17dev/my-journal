@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createStorageAdminClient } from "@/lib/supabase/storage-admin";
 import {
   EVENT_ITEM_BUCKET,
   isEventItemStoragePath,
@@ -7,11 +8,17 @@ import {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function notFound() {
   return new Response(null, {
     status: 404,
     headers: {
       "Cache-Control": "private, no-store",
+      "CDN-Cache-Control": "no-store",
+      "Vercel-CDN-Cache-Control": "no-store",
+      "Surrogate-Control": "no-store",
       "Referrer-Policy": "no-referrer",
       "X-Content-Type-Options": "nosniff",
     },
@@ -64,33 +71,49 @@ export async function GET(
     if (error || !event || event.visibility !== "public") return notFound();
   }
 
-  const { data: signed, error: signedError } = await supabase.storage
-    .from(EVENT_ITEM_BUCKET)
-    .createSignedUrl(item.storage_path, 5 * 60);
-  if (signedError || !signed?.signedUrl) return notFound();
-
-  let storedImage: Response;
+  let imageFile: Blob;
   try {
-    storedImage = await fetch(signed.signedUrl, { cache: "no-store" });
+    const storageAdmin = createStorageAdminClient();
+    const { data: itemEvent, error: itemEventError } = await storageAdmin
+      .from("events")
+      .select("user_id")
+      .eq("id", item.event_id)
+      .maybeSingle();
+    if (
+      itemEventError ||
+      !itemEvent ||
+      !isOwnerEventItemStoragePath(item.storage_path, itemEvent.user_id)
+    ) {
+      return notFound();
+    }
+
+    const { data, error } = await storageAdmin.storage
+      .from(EVENT_ITEM_BUCKET)
+      .download(item.storage_path);
+    if (error || !data) return notFound();
+    imageFile = data;
   } catch {
     return notFound();
   }
 
-  const contentType = storedImage.headers.get("content-type")?.split(";")[0].toLowerCase();
+  const contentType = imageFile.type.split(";")[0].toLowerCase();
   if (
-    !storedImage.ok ||
-    !storedImage.body ||
     !contentType ||
     !["image/jpeg", "image/png", "image/webp"].includes(contentType)
   ) {
     return notFound();
   }
 
-  return new Response(storedImage.body, {
+  return new Response(await imageFile.arrayBuffer(), {
     status: 200,
     headers: {
       "Content-Type": contentType,
-      "Cache-Control": "private, no-store",
+      "Cache-Control": "private, no-store, max-age=0",
+      "CDN-Cache-Control": "no-store",
+      "Vercel-CDN-Cache-Control": "no-store",
+      "Surrogate-Control": "no-store",
+      "Pragma": "no-cache",
+      "Expires": "0",
       "Referrer-Policy": "no-referrer",
       "X-Content-Type-Options": "nosniff",
     },

@@ -47,7 +47,7 @@ export async function uploadPostImage(formData: FormData): Promise<{ path?: stri
   return { path };
 }
 
-export async function signOwnerPostImage(postId: string, path: string): Promise<string | null> {
+export async function getOwnerPostImageUrl(postId: string, path: string): Promise<string | null> {
   const owner = await requireJournalOwner();
   if (typeof postId !== "string" || !/^[0-9a-f-]{36}$/i.test(postId) ||
       typeof path !== "string" || !isOwnerImagePath(path, owner.id)) return null;
@@ -63,6 +63,5 @@ export async function signOwnerPostImage(postId: string, path: string): Promise<
   const { data: image, error: imageError } = await supabase.from("post_images")
     .select("id").eq("post_id", postId).eq("storage_path", path).maybeSingle();
   if (imageError || !image) return null;
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 15 * 60);
-  return error ? null : data.signedUrl;
+  return `/api/images/${image.id}`;
 }
