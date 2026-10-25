@@ -1,0 +1,285 @@
+:root {
+  color-scheme: light;
+  --paper: #f7f5f0;
+  --ink: #242923;
+  --muted: #73786f;
+  --line: #deded5;
+  --green: #53694d;
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: "Segoe UI", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell {
+  width: min(1080px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+header {
+  height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-family: var(--serif);
+  font-size: 25px;
+  letter-spacing: -0.7px;
+}
+
+nav {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+  color: #555b53;
+  font-size: 13px;
+}
+
+nav a:hover,
+.text-link:hover {
+  color: var(--green);
+}
+
+.intro {
+  max-width: 740px;
+  padding: 88px 0 75px;
+}
+
+.eyebrow {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+h1 {
+  max-width: 700px;
+  margin: 22px 0 18px;
+  font-family: var(--serif);
+  font-size: clamp(46px, 7vw, 76px);
+  font-weight: 400;
+  letter-spacing: -2.8px;
+  line-height: 1.04;
+}
+
+.intro p {
+  max-width: 510px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-top: 1px solid var(--line);
+  padding-top: 25px;
+}
+
+h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.5px;
+}
+
+.text-link {
+  color: var(--green);
+  font-size: 13px;
+}
+
+.posts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 34px;
+  padding: 30px 0 76px;
+}
+
+.post-art {
+  position: relative;
+  height: 185px;
+  overflow: hidden;
+  margin-bottom: 19px;
+  background: #e6e6dc;
+}
+
+.post-art::before,
+.post-art::after {
+  position: absolute;
+  content: "";
+}
+
+.art-coast {
+  background: linear-gradient(
+    180deg,
+    #dce5df 0 47%,
+    #a9b8a6 47% 55%,
+    #788d7d 55% 100%
+  );
+}
+
+.art-coast::before {
+  bottom: -52px;
+  left: -15%;
+  width: 130%;
+  height: 110px;
+  transform: rotate(-5deg);
+  border-radius: 50% 50% 0 0;
+  background: #536e66;
+}
+
+.art-coast::after {
+  right: -5%;
+  bottom: -31px;
+  width: 70%;
+  height: 60px;
+  border-radius: 50%;
+  background: #c0c8ae;
+}
+
+.art-window {
+  background: linear-gradient(135deg, #d8d3c6, #ebe6d9);
+}
+
+.art-window::before {
+  top: 30px;
+  left: calc(50% - 58px);
+  width: 116px;
+  height: 155px;
+  border: 9px solid #778271;
+  background: linear-gradient(180deg, #b8c6bd 0 52%, #d5bd9a 52%);
+  box-shadow: 8px 8px 0 #c7c0b0;
+}
+
+.art-window::after {
+  top: 30px;
+  left: 50%;
+  width: 9px;
+  height: 155px;
+  background: #778271;
+}
+
+.art-market {
+  background: #e5d9c9;
+}
+
+.art-market::before {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 68%;
+  background: repeating-linear-gradient(
+    90deg,
+    #a87459 0 30px,
+    #d8b485 30px 60px,
+    #75856b 60px 90px
+  );
+  clip-path: polygon(
+    0 30%,
+    15% 8%,
+    30% 30%,
+    45% 8%,
+    60% 30%,
+    75% 8%,
+    90% 30%,
+    100% 15%,
+    100% 100%,
+    0 100%
+  );
+}
+
+.post-meta {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.post h3 {
+  margin: 10px 0 8px;
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.post p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding: 23px 0 32px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 680px) {
+  .shell {
+    width: min(100% - 36px, 520px);
+  }
+
+  header {
+    height: 70px;
+  }
+
+  nav {
+    gap: 17px;
+    font-size: 12px;
+  }
+
+  .intro {
+    padding: 67px 0 58px;
+  }
+
+  h1 {
+    letter-spacing: -1.8px;
+  }
+
+  .posts {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding-bottom: 55px;
+  }
+
+  .post-art {
+    height: 210px;
+  }
+}
+
+@media (max-width: 390px) {
+  nav {
+    gap: 11px;
+  }
+
+  nav a {
+    font-size: 11px;
+  }
+}
